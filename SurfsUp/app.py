@@ -28,13 +28,6 @@ Station = Base.classes.station
 session = Session(engine)
 
 
-# reflect the tables
-
-
-# Save references to each table
-
-
-# Create our session (link) from Python to the DB
 
 
 #################################################
@@ -57,7 +50,7 @@ def Hi():
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
         f"/api/v1.0/temp/yyyy-mm-dd<br/>"
-        f"/api/v1.0/temp/yyyy-mm-dd<br/>"
+        
     )
 
 
@@ -72,5 +65,61 @@ def stations():
     return jsonify(stations=stations)
 
 
+
+
+@app.route("/api/v1.0/precipitation")
+def precipitation():
+    
+    twelve_month_prcp = session.query(Measurement.date, Measurement.prcp).\
+                        filter(Measurement.date >= '2016-08-23').\
+                        order_by(Measurement.date).all()
+    
+    session.close()
+
+    precipitation = list(np.ravel(twelve_month_prcp ))
+    return jsonify(precipitation=precipitation)
+
+
+
+@app.route("/api/v1.0/tobs")
+def tobs(): 
+    temp_observation = session.query(Measurement.tobs).\
+    filter(Measurement.date>='2016-08-23').\
+    filter(Station.station == Measurement.station).\
+    filter(Station.station== 'USC00519281').all()
+
+    session.close()
+
+    tobs= list(np.ravel( temp_observation  ))
+    return jsonify(tobs=tobs)
+
+
+
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+
+def start(start=None,end=None):
+    if not end:
+        datetime_object = datetime.strptime(start,"%m%d%Y")
+        date = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(Measurement.date >= start).all()
+
+        session.close()
+
+        start = list(np.ravel( date ))
+        return jsonify(start =start )
+    
+    
+    date = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+
+
+    session.close()
+
+    start = list(np.ravel( date ))
+    return jsonify(start =start )
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+
