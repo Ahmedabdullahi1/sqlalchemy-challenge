@@ -49,7 +49,7 @@ def Hi():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/temp/yyyy-mm-dd<br/>"
+        f"/api/v1.0/temp/mm-dd-yyyy<br/>"
         
     )
 
@@ -94,32 +94,44 @@ def tobs():
     return jsonify(tobs=tobs)
 
 
+    
+@app.route("/api/v1.0/temp/<start>")
+@app.route("/api/v1.0/temp/<start>/<end>")
+def stats(start=None, end=None):
+    """Return TMIN, TAVG, TMAX."""
 
-@app.route("/api/v1.0/<start>")
-@app.route("/api/v1.0/<start>/<end>")
+    # Select statement
+    sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
 
-def start(start=None,end=None):
     if not end:
-        datetime_object = datetime.strptime(start,"%m%d%Y")
-        date = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
-        filter(Measurement.date >= start).all()
+
+        start = dt.datetime.strptime(start, "%m%d%Y")
+        results = session.query(*sel).\
+            filter(Measurement.date >= start).all()
 
         session.close()
 
-        start = list(np.ravel( date ))
-        return jsonify(start =start )
-    
-    
-    date = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
-    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+        temps = list(np.ravel(results))
+        return jsonify(temps)
 
+    # calculate TMIN, TAVG, TMAX with start and stop
+    start = dt.datetime.strptime(start, "%m%d%Y")
+    end = dt.datetime.strptime(end, "%m%d%Y")
+
+    results = session.query(*sel).\
+        filter(Measurement.date >= start).\
+        filter(Measurement.date <= end).all()
 
     session.close()
 
-    start = list(np.ravel( date ))
-    return jsonify(start =start )
+    # Unravel results into a 1D array and convert to a list
+    temps = list(np.ravel(results))
+    return jsonify(temps=temps)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+     app.run(debug=True)
+
+
+
 
